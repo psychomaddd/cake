@@ -295,6 +295,22 @@
       const highScoreText = document.getElementById("highScoreText");
       const petalsEl = document.getElementById("petals");
 
+      function readBestScore() {
+        try {
+          return Number(localStorage.getItem("weddingCakeBest") || 0);
+        } catch (error) {
+          return 0;
+        }
+      }
+
+      function saveBestScore(score) {
+        try {
+          localStorage.setItem("weddingCakeBest", String(score));
+        } catch (error) {
+          // Browsers can block storage for local files or private sessions; gameplay still works.
+        }
+      }
+
       const state = {
         running: false,
         gameOver: false,
@@ -302,7 +318,7 @@
         height: 0,
         dpr: 1,
         score: 0,
-        best: Number(localStorage.getItem("weddingCakeBest") || 0),
+        best: readBestScore(),
         layers: [],
         cutoffs: [],
         particles: [],
@@ -350,6 +366,7 @@
       class AudioGarden {
         constructor() {
           const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) throw new Error("Web Audio API is not available");
           this.ctx = new AudioContext();
           this.master = this.ctx.createGain();
           this.master.gain.value = 0.22;
@@ -400,8 +417,13 @@
       }
 
       function ensureAudio() {
-        if (!state.audio) state.audio = new AudioGarden();
-        if (state.audio.ctx.state === "suspended") state.audio.ctx.resume();
+        if (state.audio === false) return;
+        try {
+          if (!state.audio) state.audio = new AudioGarden();
+          if (state.audio.ctx.state === "suspended") state.audio.ctx.resume();
+        } catch (error) {
+          state.audio = false;
+        }
       }
 
       function resetGame() {
@@ -424,19 +446,19 @@
         const baseWidth = Math.min(state.width * 0.58, 300);
         const layerHeight = Math.max(30, Math.min(42, state.height * 0.052));
         const baseY = state.height - Math.max(76, state.height * 0.12);
-        state.layers = [{ x: state.width / 2 - baseWidth / 2, y: baseY, w: baseWidth, h: layerHeight, level: 1, perfect: true }];
+        state.layers = [{ x: state.width / 2 - baseWidth / 2, y: baseY, w: baseWidth, h: layerHeight, level: 0, perfect: true }];
         spawnActiveLayer();
         updateHud();
       }
 
       function spawnActiveLayer() {
         const last = state.layers[state.layers.length - 1];
-        const level = state.layers.length + 1;
+        const level = state.layers.length;
         const h = last.h;
         const speed = (145 + Math.min(level * 5.5, 210)) * (state.vipBoost > 0 ? 1.32 : 1);
         state.active = {
           x: state.width * 0.08,
-          y: last.y - h - 18,
+          y: last.y - h,
           w: last.w,
           h,
           level,
@@ -459,7 +481,7 @@
       function updateHud() {
         scoreEl.textContent = state.score;
         comboEl.textContent = `${state.combo} x${comboMultiplier()}`;
-        layerEl.textContent = state.layers.length;
+        layerEl.textContent = Math.max(0, state.layers.length - 1);
         bestEl.textContent = Math.max(state.best, state.score);
       }
 
@@ -483,7 +505,7 @@
         if (overlapRatio < 0.1) {
           createCutoff(active.x, active.y, active.w, active.h, active.level, active.x < last.x ? -1 : 1);
           badShake();
-          state.audio?.thud();
+          if (state.audio) state.audio.thud();
           endGame();
           return;
         }
@@ -508,11 +530,11 @@
           state.combo += 1;
           state.longestCombo = Math.max(state.longestCombo, state.combo);
           addSparkles(landingX + landingWidth / 2, active.y + active.h / 2, 24);
-          state.audio?.chime(true);
+          if (state.audio) state.audio.chime(true);
         } else {
           if (!good) badShake();
           state.combo = 0;
-          state.audio?.chime(false);
+          if (state.audio) state.audio.chime(false);
         }
 
         let points = perfect ? 50 : good ? 20 : 10;
@@ -529,7 +551,7 @@
         if (state.vipBoost > 0) state.vipBoost -= 1;
         if (level % 10 !== 0) return;
         launchConfetti();
-        state.audio?.fanfare();
+        if (state.audio) state.audio.fanfare();
         const events = ["Flower Shower +100", "Bride Approval: double score for 5 layers", "VIP Wedding: faster tiers", "Windy Venue: gentle sway"];
         const choice = Math.floor(Math.random() * events.length);
         state.message = events[choice];
@@ -586,12 +608,12 @@
         const rating = ratingFor(height);
         if (state.score > state.best) {
           state.best = state.score;
-          localStorage.setItem("weddingCakeBest", String(state.best));
+          saveBestScore(state.best);
         }
         finalHeightEl.textContent = `${height} layer${height === 1 ? "" : "s"}`;
         finalRatingEl.textContent = rating;
         finalComboEl.textContent = state.longestCombo;
-        finalLayerEl.textContent = state.layers.length;
+        finalLayerEl.textContent = height;
         ratingText.textContent = rating;
         highScoreText.textContent = `High score: ${state.best}`;
         updateHud();
@@ -639,7 +661,7 @@
         drawBackground();
         ctx.save();
         ctx.translate(0, state.cameraY);
-        drawPlate();
+        if (state.layers.length > 0) drawPlate();
         state.layers.forEach(drawLayer);
         state.cutoffs.forEach(drawCutoff);
         if (state.active) drawLayer(state.active, true);
@@ -665,6 +687,7 @@
 
       function drawPlate() {
         const base = state.layers[0];
+        if (!base) return;
         const y = base.y + base.h + 18;
         ctx.save();
         ctx.fillStyle = "rgba(87, 55, 89, 0.16)";
