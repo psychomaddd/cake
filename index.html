@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Wedding Cake Stack</title>
+  <style>
+    :root {
+      --cream: #fff8f3;
+      --blush: #ffd9e5;
+      --rose: #f58caf;
+      --lavender: #cbb7ff;
+      --gold: #d7a94c;
+      --mint: #bfe8df;
+      --ink: #4a3850;
+      --shadow: rgba(73, 43, 80, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fff4f9 0%, #f9ecff 48%, #e8f7ff 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 15% 14%, rgba(255, 255, 255, 0.9) 0 0.8rem, transparent 0.85rem),
+        radial-gradient(circle at 80% 12%, rgba(255, 255, 255, 0.75) 0 1.1rem, transparent 1.15rem),
+        radial-gradient(circle at 26% 72%, rgba(255, 255, 255, 0.55) 0 1.4rem, transparent 1.45rem),
+        linear-gradient(90deg, transparent 0 47%, rgba(255, 255, 255, 0.22) 48% 52%, transparent 53% 100%);
+      opacity: 0.75;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .petals {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .petal {
+      position: absolute;
+      top: -8vh;
+      width: clamp(10px, 2.5vw, 18px);
+      height: clamp(16px, 4vw, 28px);
+      border-radius: 70% 20% 70% 20%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,181,203,0.9));
+      box-shadow: 0 0 14px rgba(255, 170, 202, 0.35);
+      animation: fall linear infinite;
+      opacity: 0.85;
+    }
+
+    @keyframes fall {
+      0% { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+      50% { transform: translate3d(var(--drift), 55vh, 0) rotate(180deg); }
+      100% { transform: translate3d(calc(var(--drift) * -0.25), 112vh, 0) rotate(360deg); }
+    }
+
+    .hud {
+      position: fixed;
+      top: max(12px, env(safe-area-inset-top));
+      left: 50%;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(70px, 1fr));
+      gap: clamp(6px, 1.8vw, 14px);
+      width: min(94vw, 760px);
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .stat {
+      padding: 0.55rem 0.6rem;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.62);
+      box-shadow: 0 10px 30px var(--shadow);
+      text-align: center;
+      backdrop-filter: blur(14px);
+    }
+
+    .stat span {
+      display: block;
+      font-size: clamp(0.62rem, 2vw, 0.78rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.72;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 0.12rem;
+      font-size: clamp(1rem, 4vw, 1.7rem);
+      line-height: 1;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.35), rgba(255,234,245,0.75));
+      backdrop-filter: blur(10px);
+    }
+
+    .hidden { display: none; }
+
+    .card {
+      width: min(92vw, 520px);
+      padding: clamp(1.2rem, 4vw, 2rem);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 34px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 26px 70px rgba(89, 45, 95, 0.24);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.2rem, 10vw, 4.7rem);
+      line-height: 0.92;
+      color: #8b4b74;
+      text-shadow: 0 3px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    h2 {
+      margin: 0 0 0.4rem;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2rem, 8vw, 3.6rem);
+      color: #8b4b74;
+    }
+
+    .subtitle {
+      margin: 1rem auto 1.3rem;
+      max-width: 34ch;
+      font-size: clamp(0.98rem, 3vw, 1.12rem);
+      line-height: 1.5;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 180px;
+      min-height: 52px;
+      margin-top: 0.5rem;
+      padding: 0.9rem 1.3rem;
+      border: 0;
+      border-radius: 999px;
+      color: white;
+      font: 800 1rem/1 system-ui, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #f58caf, #b78cff 62%, #d7a94c);
+      box-shadow: 0 14px 30px rgba(175, 111, 180, 0.35), inset 0 1px rgba(255,255,255,0.5);
+      cursor: pointer;
+    }
+
+    button:active { transform: translateY(2px) scale(0.99); }
+
+    .tip {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      opacity: 0.72;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin: 1rem 0;
+      text-align: left;
+    }
+
+    .result {
+      padding: 0.8rem;
+      border-radius: 18px;
+      background: rgba(255, 237, 246, 0.8);
+    }
+
+    .result span {
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.68;
+    }
+
+    .result strong { font-size: 1.25rem; }
+
+    .shake { animation: shake 0.22s linear; }
+
+    @keyframes shake {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      25% { transform: translate3d(-8px, 4px, 0); }
+      50% { transform: translate3d(7px, -4px, 0); }
+      75% { transform: translate3d(-5px, 2px, 0); }
+    }
+
+    @media (max-width: 520px) {
+      .hud { grid-template-columns: repeat(2, 1fr); }
+      .results { grid-template-columns: 1fr; }
+      .card { border-radius: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="game" aria-label="Wedding Cake Stack arcade game">
+    <canvas id="canvas"></canvas>
+  </main>
+
+  <div class="petals" id="petals" aria-hidden="true"></div>
+
+  <section class="hud" aria-live="polite">
+    <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+    <div class="stat"><span>Combo</span><strong id="combo">0</strong></div>
+    <div class="stat"><span>Layer</span><strong id="layer">0</strong></div>
+    <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+  </section>
+
+  <section class="overlay" id="startScreen">
+    <div class="card">
+      <h1>Wedding Cake Stack</h1>
+      <p class="subtitle">Tap when the floating cake tier lines up. Perfect drops keep the cake wide, build combos, and unlock a royal dessert masterpiece.</p>
+      <button id="startButton">Start Baking</button>
+      <p class="tip">Click, tap, or press Space. Audio begins after your first tap.</p>
+    </div>
+  </section>
+
+  <section class="overlay hidden" id="gameOverScreen" aria-modal="true" role="dialog">
+    <div class="card">
+      <h2>Reception Over!</h2>
+      <p class="subtitle" id="ratingText">Home Baker</p>
+      <div class="results">
+        <div class="result"><span>Final Height</span><strong id="finalHeight">0 layers</strong></div>
+        <div class="result"><span>Wedding Rating</span><strong id="finalRating">Home Baker</strong></div>
+        <div class="result"><span>Longest Combo</span><strong id="finalCombo">0</strong></div>
+        <div class="result"><span>Highest Layer</span><strong id="finalLayer">0</strong></div>
+      </div>
+      <button id="restartButton">Bake Again</button>
+      <p class="tip" id="highScoreText">High score: 0</p>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const gameEl = document.getElementById("game");
+      const startScreen = document.getElementById("startScreen");
+      const gameOverScreen = document.getElementById("gameOverScreen");
+      const scoreEl = document.getElementById("score");
+      const comboEl = document.getElementById("combo");
+      const layerEl = document.getElementById("layer");
+      const bestEl = document.getElementById("best");
+      const finalHeightEl = document.getElementById("finalHeight");
+      const finalRatingEl = document.getElementById("finalRating");
+      const finalComboEl = document.getElementById("finalCombo");
+      const finalLayerEl = document.getElementById("finalLayer");
+      const ratingText = document.getElementById("ratingText");
+      const highScoreText = document.getElementById("highScoreText");
+      const petalsEl = document.getElementById("petals");
+
+      function readBestScore() {
+        try {
+          return Number(localStorage.getItem("weddingCakeBest") || 0);
+        } catch (error) {
+          return 0;
+        }
+      }
+
+      function saveBestScore(score) {
+        try {
+          localStorage.setItem("weddingCakeBest", String(score));
+        } catch (error) {
+          // Browsers can block storage for local files or private sessions; gameplay still works.
+        }
+      }
+
+      const state = {
+        running: false,
+        gameOver: false,
+        width: 0,
+        height: 0,
+        dpr: 1,
+        score: 0,
+        best: readBestScore(),
+        layers: [],
+        cutoffs: [],
+        particles: [],
+        confetti: [],
+        combo: 0,
+        longestCombo: 0,
+        active: null,
+        cameraY: 0,
+        targetCameraY: 0,
+        lastTime: 0,
+        wind: 0,
+        brideBoost: 0,
+        vipBoost: 0,
+        message: "",
+        messageLife: 0,
+        audio: null,
+        musicTimer: 0,
+      };
+
+      bestEl.textContent = state.best;
+
+      function setupPetals() {
+        petalsEl.innerHTML = "";
+        for (let i = 0; i < 26; i++) {
+          const petal = document.createElement("i");
+          petal.className = "petal";
+          petal.style.left = `${Math.random() * 100}%`;
+          petal.style.setProperty("--drift", `${(Math.random() * 50 - 25).toFixed(1)}vw`);
+          petal.style.animationDuration = `${8 + Math.random() * 9}s`;
+          petal.style.animationDelay = `${-Math.random() * 14}s`;
+          petalsEl.appendChild(petal);
+        }
+      }
+
+      function resize() {
+        state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        state.width = window.innerWidth;
+        state.height = window.innerHeight;
+        canvas.width = Math.floor(state.width * state.dpr);
+        canvas.height = Math.floor(state.height * state.dpr);
+        ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+        if (!state.running && !state.layers.length) drawIdleCake();
+      }
+
+      class AudioGarden {
+        constructor() {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) throw new Error("Web Audio API is not available");
+          this.ctx = new AudioContext();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = 0.22;
+          this.master.connect(this.ctx.destination);
+          this.delay = this.ctx.createDelay();
+          this.delay.delayTime.value = 0.28;
+          this.feedback = this.ctx.createGain();
+          this.feedback.gain.value = 0.18;
+          this.delay.connect(this.feedback).connect(this.delay);
+          this.delay.connect(this.master);
+        }
+
+        tone(freq, duration, type = "sine", volume = 0.18, delay = 0) {
+          const now = this.ctx.currentTime + delay;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(volume, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+          osc.connect(gain).connect(this.master);
+          gain.connect(this.delay);
+          osc.start(now);
+          osc.stop(now + duration + 0.05);
+        }
+
+        chime(perfect = false) {
+          this.tone(perfect ? 880 : 523.25, 0.18, "triangle", 0.15);
+          this.tone(perfect ? 1318.5 : 659.25, 0.22, "sine", 0.10, 0.06);
+        }
+
+        thud() {
+          this.tone(98, 0.22, "sawtooth", 0.12);
+          this.tone(61.7, 0.28, "triangle", 0.12, 0.03);
+        }
+
+        fanfare() {
+          [523.25, 659.25, 783.99, 1046.5].forEach((note, i) => this.tone(note, 0.22, "triangle", 0.13, i * 0.08));
+        }
+
+        music(time) {
+          const notes = [392, 493.88, 587.33, 659.25, 587.33, 493.88, 440, 523.25];
+          const note = notes[Math.floor(time / 0.72) % notes.length];
+          this.tone(note, 0.42, "sine", 0.035);
+          this.tone(note / 2, 0.55, "triangle", 0.025, 0.03);
+        }
+      }
+
+      function ensureAudio() {
+        if (state.audio === false) return;
+        try {
+          if (!state.audio) state.audio = new AudioGarden();
+          if (state.audio.ctx.state === "suspended") state.audio.ctx.resume();
+        } catch (error) {
+          state.audio = false;
+        }
+      }
+
+      function resetGame() {
+        state.running = true;
+        state.gameOver = false;
+        state.score = 0;
+        state.combo = 0;
+        state.longestCombo = 0;
+        state.cutoffs = [];
+        state.particles = [];
+        state.confetti = [];
+        state.cameraY = 0;
+        state.targetCameraY = 0;
+        state.wind = 0;
+        state.brideBoost = 0;
+        state.vipBoost = 0;
+        state.message = "";
+        state.messageLife = 0;
+        state.musicTimer = 0;
+        const baseWidth = Math.min(state.width * 0.58, 300);
+        const layerHeight = Math.max(30, Math.min(42, state.height * 0.052));
+        const baseY = state.height - Math.max(76, state.height * 0.12);
+        state.layers = [{ x: state.width / 2 - baseWidth / 2, y: baseY, w: baseWidth, h: layerHeight, level: 0, perfect: true }];
+        spawnActiveLayer();
+        updateHud();
+      }
+
+      function spawnActiveLayer() {
+        const last = state.layers[state.layers.length - 1];
+        const level = state.layers.length;
+        const h = last.h;
+        const speed = (145 + Math.min(level * 5.5, 210)) * (state.vipBoost > 0 ? 1.32 : 1);
+        state.active = {
+          x: state.width * 0.08,
+          y: last.y - h,
+          w: last.w,
+          h,
+          level,
+          dir: 1,
+          speed,
+          sway: Math.random() * Math.PI * 2,
+        };
+        state.targetCameraY = Math.max(0, state.height - state.active.y - state.height * 0.56);
+      }
+
+      function layerPalette(level) {
+        if (level <= 10) return ["#fff7e8", "#f2d7bb", "#ffeede"];
+        if (level <= 20) return ["#fff0f7", "#ffbfd5", "#fffafe"];
+        if (level <= 30) return ["#f8efff", "#cdb6ff", "#fff8ff"];
+        if (level <= 40) return ["#eaf9f6", "#8ed6ca", "#fff9fb"];
+        if (level <= 50) return ["#fff4cf", "#d9a83d", "#fffcee"];
+        return ["#f8f3ff", "#bb8cff", "#fff4d6"];
+      }
+
+      function updateHud() {
+        scoreEl.textContent = state.score;
+        comboEl.textContent = `${state.combo} x${comboMultiplier()}`;
+        layerEl.textContent = Math.max(0, state.layers.length - 1);
+        bestEl.textContent = Math.max(state.best, state.score);
+      }
+
+      function comboMultiplier() {
+        if (state.combo >= 10) return 5;
+        if (state.combo >= 5) return 3;
+        if (state.combo >= 3) return 2;
+        return 1;
+      }
+
+      function dropLayer() {
+        if (!state.running || state.gameOver || !state.active) return;
+        ensureAudio();
+        const active = state.active;
+        const last = state.layers[state.layers.length - 1];
+        const left = Math.max(active.x, last.x);
+        const right = Math.min(active.x + active.w, last.x + last.w);
+        const overlap = right - left;
+        const overlapRatio = overlap / active.w;
+
+        if (overlapRatio < 0.1) {
+          createCutoff(active.x, active.y, active.w, active.h, active.level, active.x < last.x ? -1 : 1);
+          badShake();
+          if (state.audio) state.audio.thud();
+          endGame();
+          return;
+        }
+
+        const offset = Math.abs(active.x - last.x);
+        const perfectThreshold = Math.max(7, active.w * 0.035);
+        const goodThreshold = Math.max(18, active.w * 0.14);
+        const perfect = offset <= perfectThreshold;
+        const good = !perfect && offset <= goodThreshold;
+        const landingWidth = perfect ? active.w : overlap;
+        const landingX = perfect ? last.x : left;
+
+        if (!perfect) {
+          if (active.x < last.x) createCutoff(active.x, active.y, last.x - active.x, active.h, active.level, -1);
+          if (active.x + active.w > last.x + last.w) createCutoff(last.x + last.w, active.y, active.x + active.w - (last.x + last.w), active.h, active.level, 1);
+        }
+
+        state.layers.push({ x: landingX, y: active.y, w: landingWidth, h: active.h, level: active.level, perfect });
+        state.active = null;
+
+        if (perfect) {
+          state.combo += 1;
+          state.longestCombo = Math.max(state.longestCombo, state.combo);
+          addSparkles(landingX + landingWidth / 2, active.y + active.h / 2, 24);
+          if (state.audio) state.audio.chime(true);
+        } else {
+          if (!good) badShake();
+          state.combo = 0;
+          if (state.audio) state.audio.chime(false);
+        }
+
+        let points = perfect ? 50 : good ? 20 : 10;
+        points *= comboMultiplier();
+        if (state.brideBoost > 0) points *= 2;
+        state.score += points;
+        handleMilestones(active.level);
+        updateHud();
+        setTimeout(() => state.running && spawnActiveLayer(), 80);
+      }
+
+      function handleMilestones(level) {
+        if (state.brideBoost > 0) state.brideBoost -= 1;
+        if (state.vipBoost > 0) state.vipBoost -= 1;
+        if (level % 10 !== 0) return;
+        launchConfetti();
+        if (state.audio) state.audio.fanfare();
+        const events = ["Flower Shower +100", "Bride Approval: double score for 5 layers", "VIP Wedding: faster tiers", "Windy Venue: gentle sway"];
+        const choice = Math.floor(Math.random() * events.length);
+        state.message = events[choice];
+        state.messageLife = 3.2;
+        if (choice === 0) {
+          state.score += 100;
+          addSparkles(state.width / 2, state.height * 0.34 + state.cameraY, 60);
+        } else if (choice === 1) {
+          state.brideBoost = 5;
+        } else if (choice === 2) {
+          state.vipBoost = 10;
+        } else {
+          state.wind = 10;
+        }
+      }
+
+      function createCutoff(x, y, w, h, level, dir) {
+        if (w <= 1) return;
+        state.cutoffs.push({ x, y, w, h, level, dir, vy: -45, vx: 80 * dir, rot: 0, vr: dir * 2.2, life: 1.1 });
+      }
+
+      function addSparkles(x, y, count) {
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 45 + Math.random() * 135;
+          state.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: 2 + Math.random() * 4, life: 0.7 + Math.random() * 0.5, hue: Math.random() > 0.4 ? "#fff6a3" : "#ffffff" });
+        }
+      }
+
+      function launchConfetti() {
+        for (let i = 0; i < 90; i++) {
+          state.confetti.push({ x: Math.random() * state.width, y: -20 + state.cameraY, vx: -55 + Math.random() * 110, vy: 80 + Math.random() * 180, size: 5 + Math.random() * 7, rot: Math.random() * Math.PI, vr: -5 + Math.random() * 10, life: 3, color: ["#f58caf", "#cbb7ff", "#d7a94c", "#bfe8df", "#ffffff"][i % 5] });
+        }
+      }
+
+      function badShake() {
+        gameEl.classList.remove("shake");
+        void gameEl.offsetWidth;
+        gameEl.classList.add("shake");
+      }
+
+      function ratingFor(layers) {
+        if (layers >= 50) return "Royal Wedding Legend";
+        if (layers >= 40) return "Master Pastry Chef";
+        if (layers >= 30) return "Wedding Expert";
+        if (layers >= 18) return "Cake Artist";
+        return "Home Baker";
+      }
+
+      function endGame() {
+        state.gameOver = true;
+        state.running = false;
+        const height = Math.max(0, state.layers.length - 1);
+        const rating = ratingFor(height);
+        if (state.score > state.best) {
+          state.best = state.score;
+          saveBestScore(state.best);
+        }
+        finalHeightEl.textContent = `${height} layer${height === 1 ? "" : "s"}`;
+        finalRatingEl.textContent = rating;
+        finalComboEl.textContent = state.longestCombo;
+        finalLayerEl.textContent = height;
+        ratingText.textContent = rating;
+        highScoreText.textContent = `High score: ${state.best}`;
+        updateHud();
+        setTimeout(() => gameOverScreen.classList.remove("hidden"), 420);
+      }
+
+      function update(dt, time) {
+        state.cameraY += (state.targetCameraY - state.cameraY) * Math.min(1, dt * 5.5);
+        if (state.active) {
+          const a = state.active;
+          a.sway += dt * 3.2;
+          const windSway = state.wind > 0 ? Math.sin(a.sway) * 22 : 0;
+          a.x += a.dir * a.speed * dt + windSway * dt;
+          if (a.x <= 8) { a.x = 8; a.dir = 1; }
+          if (a.x + a.w >= state.width - 8) { a.x = state.width - 8 - a.w; a.dir = -1; }
+        }
+        if (state.wind > 0) state.wind = Math.max(0, state.wind - dt * 0.45);
+        state.messageLife = Math.max(0, state.messageLife - dt);
+        updatePhysicsList(state.cutoffs, dt, true);
+        updatePhysicsList(state.particles, dt, false);
+        updatePhysicsList(state.confetti, dt, true);
+        if (state.running && state.audio) {
+          state.musicTimer += dt;
+          if (state.musicTimer > 0.72) {
+            state.musicTimer = 0;
+            state.audio.music(time / 1000);
+          }
+        }
+      }
+
+      function updatePhysicsList(list, dt, gravity) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          const p = list[i];
+          p.life -= dt;
+          p.x += (p.vx || 0) * dt;
+          p.y += (p.vy || 0) * dt;
+          if (gravity) p.vy = (p.vy || 0) + 260 * dt;
+          if (p.rot !== undefined) p.rot += (p.vr || 0) * dt;
+          if (p.life <= 0) list.splice(i, 1);
+        }
+      }
+
+      function draw(time = 0) {
+        ctx.clearRect(0, 0, state.width, state.height);
+        drawBackground();
+        ctx.save();
+        ctx.translate(0, state.cameraY);
+        if (state.layers.length > 0) drawPlate();
+        state.layers.forEach(drawLayer);
+        state.cutoffs.forEach(drawCutoff);
+        if (state.active) drawLayer(state.active, true);
+        drawParticles();
+        drawConfetti();
+        ctx.restore();
+        drawMessage();
+      }
+
+      function drawBackground() {
+        ctx.save();
+        ctx.globalAlpha = 0.75;
+        for (let i = 0; i < 8; i++) {
+          const x = (i * 137 + 80) % state.width;
+          const y = (i * 211 + 120 + state.cameraY * 0.08) % state.height;
+          ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.45)" : "rgba(255,215,232,0.5)";
+          ctx.beginPath();
+          ctx.arc(x, y, 28 + (i % 3) * 13, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawPlate() {
+        const base = state.layers[0];
+        if (!base) return;
+        const y = base.y + base.h + 18;
+        ctx.save();
+        ctx.fillStyle = "rgba(87, 55, 89, 0.16)";
+        ctx.beginPath();
+        ctx.ellipse(state.width / 2, y + 9, base.w * 0.76, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const grad = ctx.createLinearGradient(0, y - 8, 0, y + 14);
+        grad.addColorStop(0, "#fffefc");
+        grad.addColorStop(1, "#dcc8ff");
+        ctx.fillStyle = grad;
+        roundRect(state.width / 2 - base.w * 0.72, y - 10, base.w * 1.44, 22, 999);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawLayer(layer, moving = false) {
+        const [top, side, icing] = layerPalette(layer.level);
+        ctx.save();
+        ctx.shadowColor = "rgba(78, 45, 82, 0.18)";
+        ctx.shadowBlur = moving ? 20 : 12;
+        ctx.shadowOffsetY = 7;
+        const y = layer.y;
+        const radius = Math.min(18, layer.h * 0.45, layer.w * 0.12);
+        const grad = ctx.createLinearGradient(layer.x, y, layer.x, y + layer.h);
+        grad.addColorStop(0, top);
+        grad.addColorStop(0.48, icing);
+        grad.addColorStop(1, side);
+        ctx.fillStyle = grad;
+        roundRect(layer.x, y, layer.w, layer.h, radius);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        drawIcing(layer, icing);
+        drawDecor(layer);
+        if (moving) {
+          ctx.globalAlpha = 0.45;
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          roundRect(layer.x + 4, y + 4, layer.w - 8, layer.h - 8, radius);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawIcing(layer, color) {
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.92;
+        const drips = Math.max(3, Math.floor(layer.w / 46));
+        for (let i = 0; i < drips; i++) {
+          const x = layer.x + (i + 0.55) * (layer.w / drips);
+          const h = 5 + ((layer.level + i) % 4) * 3;
+          ctx.beginPath();
+          ctx.ellipse(x, layer.y + 7 + h, 5 + (i % 2) * 2, h, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawDecor(layer) {
+        const midY = layer.y + layer.h * 0.55;
+        if (layer.level > 20) {
+          for (let i = 0; i < Math.max(1, Math.floor(layer.w / 80)); i++) drawFlower(layer.x + 22 + i * 72, midY, 4.5);
+        }
+        if (layer.level > 30) {
+          ctx.strokeStyle = layer.level > 50 ? "#a77cff" : "#f39abc";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(layer.x + 8, layer.y + layer.h * 0.68);
+          ctx.lineTo(layer.x + layer.w - 8, layer.y + layer.h * 0.68);
+          ctx.stroke();
+        }
+        if (layer.level > 40) {
+          ctx.fillStyle = "#ffe48c";
+          for (let i = 0; i < Math.max(1, Math.floor(layer.w / 64)); i++) star(layer.x + 28 + i * 58, layer.y + layer.h * 0.32, 5, 8, 4);
+        }
+        if (layer.level > 50) {
+          ctx.strokeStyle = "rgba(255,255,255,0.8)";
+          ctx.lineWidth = 1.5;
+          for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            ctx.arc(layer.x + layer.w * (0.25 + i * 0.25), layer.y + layer.h * 0.5, 9, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      function drawFlower(x, y, size) {
+        ctx.save();
+        ctx.fillStyle = "#ff8fb2";
+        for (let p = 0; p < 5; p++) {
+          ctx.beginPath();
+          ctx.ellipse(x + Math.cos(p * 1.256) * size, y + Math.sin(p * 1.256) * size, size, size * 0.62, p * 1.256, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "#ffe48c";
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawCutoff(piece) {
+        ctx.save();
+        ctx.translate(piece.x + piece.w / 2, piece.y + piece.h / 2);
+        ctx.rotate(piece.rot);
+        drawLayer({ x: -piece.w / 2, y: -piece.h / 2, w: piece.w, h: piece.h, level: piece.level });
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        state.particles.forEach(p => {
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.hue;
+          star(p.x, p.y, 4, p.size, p.size * 0.45);
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      function drawConfetti() {
+        state.confetti.forEach(c => {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, c.life);
+          ctx.translate(c.x, c.y);
+          ctx.rotate(c.rot);
+          ctx.fillStyle = c.color;
+          ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size * 0.55);
+          ctx.restore();
+        });
+      }
+
+      function drawMessage() {
+        if (state.messageLife <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, state.messageLife);
+        ctx.textAlign = "center";
+        ctx.font = `800 ${Math.min(28, state.width * 0.055)}px Georgia, serif`;
+        ctx.fillStyle = "#8b4b74";
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.lineWidth = 5;
+        const y = Math.max(118, state.height * 0.18);
+        ctx.strokeText(state.message, state.width / 2, y);
+        ctx.fillText(state.message, state.width / 2, y);
+        ctx.restore();
+      }
+
+      function drawIdleCake() {
+        ctx.clearRect(0, 0, state.width, state.height);
+        drawBackground();
+      }
+
+      function roundRect(x, y, w, h, r) {
+        const radius = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + w, y, x + w, y + h, radius);
+        ctx.arcTo(x + w, y + h, x, y + h, radius);
+        ctx.arcTo(x, y + h, x, y, radius);
+        ctx.arcTo(x, y, x + w, y, radius);
+        ctx.closePath();
+      }
+
+      function star(x, y, points, outer, inner) {
+        ctx.beginPath();
+        for (let i = 0; i < points * 2; i++) {
+          const radius = i % 2 ? inner : outer;
+          const angle = -Math.PI / 2 + i * Math.PI / points;
+          const px = x + Math.cos(angle) * radius;
+          const py = y + Math.sin(angle) * radius;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function loop(time) {
+        const dt = Math.min(0.033, (time - state.lastTime) / 1000 || 0);
+        state.lastTime = time;
+        update(dt, time);
+        draw(time);
+        requestAnimationFrame(loop);
+      }
+
+      function startFromOverlay() {
+        ensureAudio();
+        startScreen.classList.add("hidden");
+        gameOverScreen.classList.add("hidden");
+        resetGame();
+      }
+
+      document.getElementById("startButton").addEventListener("click", startFromOverlay);
+      document.getElementById("restartButton").addEventListener("click", startFromOverlay);
+      canvas.addEventListener("pointerdown", dropLayer);
+      window.addEventListener("keydown", event => {
+        if (event.code === "Space") {
+          event.preventDefault();
+          if (!startScreen.classList.contains("hidden")) startFromOverlay();
+          else if (state.gameOver) startFromOverlay();
+          else dropLayer();
+        }
+      });
+      window.addEventListener("resize", resize);
+
+      setupPetals();
+      resize();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
